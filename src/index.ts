@@ -1,59 +1,24 @@
-import { eq } from 'drizzle-orm';
-// The 'pool' export will only exist for WebSocket and node-postgres drivers
-import { index } from './db';
-import { demoUsers } from './db/schema';
+import express from 'express';
+import subjectsRouter from "./routes/subject";
+import cors from 'cors';
 
-async function main() {
-  try {
-    console.log('Performing CRUD operations...');
+const app = express();
+const port = 8000;
 
-    // CREATE: Insert a new user
-    const [newUser] = await index
-      .insert(demoUsers)
-      .values({ name: 'Admin User', email: 'admin@example.com' })
-      .returning();
+app.use(cors({
+    origin: process.env.FRONTEND_URL,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true
+}))
 
-    if (!newUser) {
-      throw new Error('Failed to create user');
-    }
-    
-    console.log('✅ CREATE: New user created:', newUser);
+app.use(express.json());
 
-    // READ: Select the user
-    const foundUser = await index.select().from(demoUsers).where(eq(demoUsers.id, newUser.id));
-    console.log('✅ READ: Found user:', foundUser[0]);
+app.use('/api/subjects', subjectsRouter)
 
-    // UPDATE: Change the user's name
-    const [updatedUser] = await index
-      .update(demoUsers)
-      .set({ name: 'Super Admin' })
-      .where(eq(demoUsers.id, newUser.id))
-      .returning();
-    
-    if (!updatedUser) {
-      throw new Error('Failed to update user');
-    }
-    
-    console.log('✅ UPDATE: User updated:', updatedUser);
+app.get('/', (req, res) => {
+    res.send('Hello, welcome to the Classroom API!');
+});
 
-    // DELETE: Remove the user
-    await index.delete(demoUsers).where(eq(demoUsers.id, newUser.id));
-    console.log('✅ DELETE: User deleted.');
-
-    console.log('\nCRUD operations completed successfully.');
-  } catch (error) {
-    console.error('❌ Error performing CRUD operations:', error);
-    process.exitCode = 1;
-    return;
-  } finally {
-    // If the pool exists, end it to close the connection
-    // @ts-ignore - pool might not exist in all configurations
-    if (global.pool) {
-      // @ts-ignore
-      await global.pool.end();
-      console.log('Database pool closed.');
-    }
-  }
-}
-
-main();
+app.listen(port, () => {
+    console.log(`Server is running at http://localhost:${port}`);
+});

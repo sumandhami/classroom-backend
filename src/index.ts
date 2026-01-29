@@ -43,7 +43,8 @@ async function main() {
     console.log('\nCRUD operations completed successfully.');
   } catch (error) {
     console.error('❌ Error performing CRUD operations:', error);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   } finally {
     // If the pool exists, end it to close the connection
     // @ts-ignore - pool might not exist in all configurations

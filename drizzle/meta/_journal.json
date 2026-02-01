@@ -8,6 +8,13 @@
       "when": 1769671073430,
       "tag": "0000_late_havok",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1769957822954,
+      "tag": "0001_empty_nightmare",
+      "breakpoints": true
     }
   ]
 }

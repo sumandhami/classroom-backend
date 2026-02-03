@@ -129,4 +129,47 @@ router.post('/', async (req, res) => {
     }
 })
 
+// Update class
+router.put('/:id', async (req, res) => {
+    try {
+        const classId = Number(req.params.id);
+        if(!Number.isFinite(classId)) return res.status(400).json({ error: 'Invalid Class ID.' });
+
+        const [updatedClass] = await db
+            .update(classes)
+            .set(req.body)
+            .where(eq(classes.id, classId))
+            .returning();
+
+        if(!updatedClass) return res.status(404).json({ error: 'Class not found.' });
+
+        res.status(200).json({ data: updatedClass });
+    } catch (e) {
+        console.error(`PUT /classes error ${e}`);
+        res.status(500).json({ error: 'Failed to update class' });
+    }
+});
+
+// Delete class
+router.delete('/:id', async (req, res) => {
+    try {
+        const classId = Number(req.params.id);
+        if(!Number.isFinite(classId)) return res.status(400).json({ error: 'Invalid Class ID.' });
+
+        const [deletedClass] = await db
+            .delete(classes)
+            .where(eq(classes.id, classId))
+            .returning();
+
+        if(!deletedClass) return res.status(404).json({ error: 'Class not found.' });
+
+        res.status(200).json({ data: deletedClass });
+    } catch (e: any) {
+        if (e.code === '23503') {
+            return res.status(400).json({ message: 'Cannot delete class with active enrollments' });
+        }
+        res.status(500).json({ error: 'Failed to delete class' });
+    }
+});
+
 export default router;

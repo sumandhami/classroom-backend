@@ -72,4 +72,82 @@ router.get("/", async (req, res) => {
     }
 })
 
+//Get one subject
+router.get("/:id", async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) return res.status(400).json({error: 'Invalid ID'});
+
+        const [subject] = await db
+            .select({
+                ...getTableColumns(subjects),
+                department: { ...getTableColumns(departments)}
+            })
+            .from(subjects)
+            .leftJoin(departments, eq(subjects.departmentId, departments.id))
+            .where(eq(subjects.id, id));
+
+        if (!subject) return res.status(404).json({error: 'Subject not found'});
+
+        res.status(200).json({data: subject});
+    } catch (e) {
+        res.status(500).json({error: 'Failed to get subject'});
+    }
+});
+
+// Create subject
+router.post("/", async (req, res) => {
+    try {
+        const [newSubject] = await db
+            .insert(subjects)
+            .values(req.body)
+            .returning();
+        res.status(201).json({data: newSubject});
+    } catch (e) {
+        res.status(500).json({error: 'Failed to create subject'});
+    }
+});
+
+// Update subject
+router.put("/:id", async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) return res.status(400).json({error: 'Invalid ID'});
+
+        const [updatedSubject] = await db
+            .update(subjects)
+            .set(req.body)
+            .where(eq(subjects.id, id))
+            .returning();
+
+        if (!updatedSubject) return res.status(404).json({error: 'Subject not found'});
+
+        res.status(200).json({data: updatedSubject});
+    } catch (e) {
+        res.status(500).json({error: 'Failed to update subject'});
+    }
+});
+
+// Delete subject
+router.delete("/:id", async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) return res.status(400).json({error: 'Invalid ID'});
+
+        const [deletedSubject] = await db
+            .delete(subjects)
+            .where(eq(subjects.id, id))
+            .returning();
+
+        if (!deletedSubject) return res.status(404).json({error: 'Subject not found'});
+
+        res.status(200).json({data: deletedSubject});
+    } catch (e: any) {
+        if (e.code === '23503') {
+            return res.status(400).json({message: 'Cannot delete subject with existing classes'});
+        }
+        res.status(500).json({error: 'Failed to delete subject'});
+    }
+});
+
 export default router;

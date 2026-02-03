@@ -68,4 +68,56 @@ router.get("/", async (req, res) => {
     }
 });
 
+// Get one user
+router.get("/:id", async (req, res) => {
+    try {
+        const [userData] = await db
+            .select()
+            .from(user)
+            .where(eq(user.id, req.params.id));
+
+        if (!userData) return res.status(404).json({error: 'User not found'});
+
+        res.status(200).json({data: userData});
+    } catch (e) {
+        res.status(500).json({error: 'Failed to get user'});
+    }
+});
+
+// Update user
+router.put("/:id", async (req, res) => {
+    try {
+        const [updatedUser] = await db
+            .update(user)
+            .set(req.body)
+            .where(eq(user.id, req.params.id))
+            .returning();
+
+        if (!updatedUser) return res.status(404).json({error: 'User not found'});
+
+        res.status(200).json({data: updatedUser});
+    } catch (e) {
+        res.status(500).json({error: 'Failed to update user'});
+    }
+});
+
+// Delete user
+router.delete("/:id", async (req, res) => {
+    try {
+        const [deletedUser] = await db
+            .delete(user)
+            .where(eq(user.id, req.params.id))
+            .returning();
+
+        if (!deletedUser) return res.status(404).json({error: 'User not found'});
+
+        res.status(200).json({data: deletedUser});
+    } catch (e: any) {
+        if (e.code === '23503') {
+            return res.status(400).json({message: 'Cannot delete user with active associations (classes or enrollments)'});
+        }
+        res.status(500).json({error: 'Failed to delete user'});
+    }
+});
+
 export default router;

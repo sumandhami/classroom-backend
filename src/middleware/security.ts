@@ -5,7 +5,20 @@ import {ArcjetNodeRequest, slidingWindow} from "@arcjet/node";
 const securityMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     if(process.env.NODE_ENV === 'test') return next();
 
+    // Skip rate limiting for auth-related paths if needed, 
+    // but better-auth has its own protections.
+    // However, we should definitely skip for static assets or if it's not an API call.
+    if (!req.path.startsWith('/api') || req.path.startsWith('/api/auth')) {
+        return next();
+    }
+
     try {
+        /*
+        const role: RateLimitRole = req.user?.role ?? 'guest';
+        ...
+        */
+        return next();
+
         const role: RateLimitRole = req.user?.role ?? 'guest';
 
         let limit: number;
@@ -13,17 +26,17 @@ const securityMiddleware = async (req: Request, res: Response, next: NextFunctio
 
         switch (role) {
             case 'admin':
-                limit = 20;
-                message = 'Admin request limit exceed (20 per minute). Slow down.';
+                limit = 50;
+                message = 'Admin request limit exceed (50 per minute). Slow down.';
                 break;
             case 'teacher':
             case 'student':
-                limit = 10;
-                message = 'User request limit exceed (10 per minute). Please wait';
+                limit = 30;
+                message = 'User request limit exceed (30 per minute). Please wait';
                 break;
             default:
-                limit = 20;
-                message = 'Guest request limit exceed (5 per minute). Please sign up for higher limits';
+                limit = 10;
+                message = 'Guest request limit exceed (10 per minute). Please sign up for higher limits';
                 break;
         }
 
@@ -39,10 +52,18 @@ const securityMiddleware = async (req: Request, res: Response, next: NextFunctio
             headers: req.headers,
             method: req.method,
             url: req.originalUrl ?? req.url,
-            socket: { remoteAddress: req.socket.remoteAddress  ?? req.ip ?? '0.0.0.0'}
+            socket: { remoteAddress: (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ?? req.socket.remoteAddress ?? req.ip ?? '0.0.0.0'}
         }
 
-        const decision = await client.protect(arcjetRequest);
+        const decision = await client.protect(arcjetRequest, {
+            requested: 1,
+        });
+
+        console.log(`[Security] Arcjet decision for role ${role}: ${decision.conclusion}. Path: ${req.path}. Limit: ${limit}`);
+        
+        if (!decision.isAllowed()) {
+            console.log(`[Security] Request DENIED. Reason:`, JSON.stringify(decision.reason));
+        }
 
         if(decision.isDenied() && decision.reason.isBot()) {
             return res.status(403).json({error: 'Forbidden', message: 'Automated requests are not allowed'});

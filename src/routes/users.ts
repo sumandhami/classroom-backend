@@ -9,6 +9,7 @@ const router = express.Router();
 router.get("/", async (req, res) => {
     try {
         const {search, role, page = 1, limit = 10} = req.query;
+        console.log(`[GET /api/users] Query Params:`, req.query);
 
         const currentPage = Math.max(1, parseInt(String(page), 10) || 1);
         const limitPerPage = Math.min(Math.max(1, parseInt(String(limit), 10) || 10), 100);
@@ -29,11 +30,13 @@ router.get("/", async (req, res) => {
 
         // if role filter exists, match role exactly
         if (role) {
+            console.log(`[GET /api/users] Applying role filter: ${role}`);
             filterConditions.push(eq(user.role, role as any));
         }
 
         // Combine all filters using AND if any exist
         const whereClause = filterConditions.length > 0 ? and(...filterConditions) : undefined;
+        console.log(`[GET /api/users] filterConditions length: ${filterConditions.length}`);
 
         const countResult = await db
             .select({ count: sql<number>`count(*)`})
@@ -51,6 +54,11 @@ router.get("/", async (req, res) => {
             .orderBy(desc(user.createdAt))
             .limit(limitPerPage)
             .offset(offset);
+
+        console.log(`[GET /api/users] Found ${userList.length} users`);
+        if (userList.length > 0) {
+            console.log(`[GET /api/users] First user role: ${userList[0].role}`);
+        }
 
         res.status(200).json({
             data: userList,

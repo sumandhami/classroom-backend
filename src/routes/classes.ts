@@ -1,5 +1,5 @@
 import express from "express";
-import {and, desc, eq, getTableColumns, ilike, or, sql} from "drizzle-orm";
+import {and, desc, eq, getTableColumns, ilike, or, sql, asc} from "drizzle-orm";
 
 import {db} from "../db/index.js";
 import {classes, departments, subjects} from '../db/schema/app.js'
@@ -10,7 +10,7 @@ const router = express.Router();
 // Get all classes with optional search, filtering and pagination
 router.get("/", async (req, res) => {
     try {
-        const { search, subject, teacher, page = 1, limit = 10 } = req.query;
+        const { search, subject, teacher, page = 1, limit = 10, sortField, sortOrder } = req.query;
 
         const currentPage = Math.max(1, parseInt(String(page), 10) || 1);
         const limitPerPage = Math.min(Math.max(1, parseInt(String(limit), 10) || 10), 100); // Max 100 records per page
@@ -44,6 +44,15 @@ router.get("/", async (req, res) => {
         // Combine all filters using AND if any exist
         const whereClause = filterConditions.length > 0 ? and(...filterConditions) : undefined;
 
+        let orderByClause: any = desc(classes.createdAt);
+
+        if (sortField && sortOrder) {
+            const column = (classes as any)[sortField as string];
+            if (column) {
+                orderByClause = sortOrder === 'asc' ? asc(column) : desc(column);
+            }
+        }
+
         const countResult = await db
             .select({ count: sql<number>`count(*)`})
             .from(classes)
@@ -63,7 +72,7 @@ router.get("/", async (req, res) => {
             .leftJoin(subjects, eq(classes.subjectId, subjects.id))
             .leftJoin(user, eq(classes.teacherId, user.id))
             .where(whereClause)
-            .orderBy(desc(classes.createdAt))
+            .orderBy(orderByClause)
             .limit(limitPerPage)
             .offset(offset);
 

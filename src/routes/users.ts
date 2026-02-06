@@ -1,5 +1,5 @@
 import express from 'express';
-import {and, desc, eq, getTableColumns, ilike, or, sql} from "drizzle-orm";
+import {and, desc, eq, getTableColumns, ilike, or, sql, asc} from "drizzle-orm";
 import {user} from "../db/schema/index.js";
 import {db} from "../db/index.js";
 
@@ -8,7 +8,8 @@ const router = express.Router();
 // Get all users with optional search, filtering and pagination
 router.get("/", async (req, res) => {
     try {
-        const {search, role, page = 1, limit = 10} = req.query;
+        const {search, role, page = 1, limit = 10, sortField, sortOrder} = req.query;
+        console.log(`[GET /api/users] Query Params:`, req.query);
 
         const currentPage = Math.max(1, parseInt(String(page), 10) || 1);
         const limitPerPage = Math.min(Math.max(1, parseInt(String(limit), 10) || 10), 100);
@@ -29,11 +30,22 @@ router.get("/", async (req, res) => {
 
         // if role filter exists, match role exactly
         if (role) {
+            console.log(`[GET /api/users] Applying role filter: ${role}`);
             filterConditions.push(eq(user.role, role as any));
         }
 
         // Combine all filters using AND if any exist
         const whereClause = filterConditions.length > 0 ? and(...filterConditions) : undefined;
+        console.log(`[GET /api/users] filterConditions length: ${filterConditions.length}`);
+
+        let orderByClause: any = desc(user.createdAt);
+
+        if (sortField && sortOrder) {
+            const column = (user as any)[sortField as string];
+            if (column) {
+                orderByClause = sortOrder === 'asc' ? asc(column) : desc(column);
+            }
+        }
 
         const countResult = await db
             .select({ count: sql<number>`count(*)`})
@@ -48,9 +60,14 @@ router.get("/", async (req, res) => {
             })
             .from(user)
             .where(whereClause)
-            .orderBy(desc(user.createdAt))
+            .orderBy(orderByClause)
             .limit(limitPerPage)
             .offset(offset);
+
+        console.log(`[GET /api/users] Found ${userList.length} users`);
+        if (userList.length > 0) {
+            console.log(`[GET /api/users] First user role: ${userList[0].role}`);
+        }
 
         res.status(200).json({
             data: userList,

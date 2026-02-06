@@ -1,29 +1,37 @@
 import type {Request, Response, NextFunction} from "express";
 import aj from "../config/arcjet.js";
 import {ArcjetNodeRequest, slidingWindow} from "@arcjet/node";
+import { auth } from "../lib/auth.js"; // Import your Better Auth instance
 
 const securityMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     if(process.env.NODE_ENV === 'test') return next();
 
+    // Skip rate limiting for non-API paths and auth endpoints
+    if (!req.path.startsWith('/api') || req.path.startsWith('/api/auth')) {
+        return next();
+    }
+
     try {
-        const role: RateLimitRole = req.user?.role ?? 'guest';
+        // ✅ GET USER FROM SESSION FIRST
+        const session = await auth.api.getSession({ headers: req.headers });
+        const userRole = session?.user?.role ?? 'guest';
 
         let limit: number;
         let message: string;
 
-        switch (role) {
+        switch (userRole) {
             case 'admin':
-                limit = 20;
-                message = 'Admin request limit exceed (20 per minute). Slow down.';
+                limit = 100;
+                message = 'Admin request limit exceeded (100 per minute). Slow down.';
                 break;
             case 'teacher':
             case 'student':
-                limit = 10;
-                message = 'User request limit exceed (10 per minute). Please wait';
+                limit = 60;
+                message = 'User request limit exceeded (60 per minute). Please wait.';
                 break;
             default:
                 limit = 20;
-                message = 'Guest request limit exceed (5 per minute). Please sign up for higher limits';
+                message = 'Guest request limit exceeded (20 per minute). Please sign up for higher limits.';
                 break;
         }
 
@@ -33,16 +41,25 @@ const securityMiddleware = async (req: Request, res: Response, next: NextFunctio
                 interval: '1m',
                 max: limit,
             })
-        )
-
+        );
+        const xff = req.headers['x-forwarded-for'];
+        const forwarded = Array.isArray(xff) ? xff[0] : xff;
         const arcjetRequest: ArcjetNodeRequest = {
             headers: req.headers,
             method: req.method,
             url: req.originalUrl ?? req.url,
-            socket: { remoteAddress: req.socket.remoteAddress  ?? req.ip ?? '0.0.0.0'}
-        }
+            socket: { remoteAddress: forwarded?.split(',')[0].trim() || req.socket.remoteAddress || req.ip || '0.0.0.0' }
+        };
 
-        const decision = await client.protect(arcjetRequest);
+        const decision = await client.protect(arcjetRequest, {
+            requested: 1,
+        });
+
+        console.log(`[Security] Arcjet decision for role ${userRole}: ${decision.conclusion}. Path: ${req.path}. Limit: ${limit}`);
+
+        if (!decision.isAllowed()) {
+            console.log(`[Security] Request DENIED. Reason:`, JSON.stringify(decision.reason));
+        }
 
         if(decision.isDenied() && decision.reason.isBot()) {
             return res.status(403).json({error: 'Forbidden', message: 'Automated requests are not allowed'});
@@ -59,9 +76,10 @@ const securityMiddleware = async (req: Request, res: Response, next: NextFunctio
         next();
 
     } catch (e) {
-        console.error('Arcjet middleware error', e);
-        res.status(500).json({error: 'Internal error', message: 'Something went wrong with security middleware'});
+        console.error('[Security] Arcjet middleware error:', e);
+        // Don't block the request on security middleware errors (fail open)
+        next();
     }
-}
+};
 
 export default securityMiddleware;

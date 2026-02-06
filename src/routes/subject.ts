@@ -1,6 +1,6 @@
 import express from 'express';
 
-import {and, desc, eq, getTableColumns, ilike, or, sql} from "drizzle-orm";
+import {and, desc, eq, getTableColumns, ilike, or, sql, asc} from "drizzle-orm";
 import {departments, subjects} from "../db/schema/index.js";
 import { db} from "../db/index.js";
 
@@ -10,7 +10,7 @@ const router = express.Router();
 
 router.get("/", async (req, res) => {
     try{
-        const {search, department, page = 1, limit = 10} = req.query;
+        const {search, department, page = 1, limit = 10, sortField, sortOrder} = req.query;
 
         const currentPage = Math.max(1, parseInt(String(page), 10) || 1);
         const limitPerPage = Math.min(Math.max(1, parseInt(String(limit), 10) || 10), 100);
@@ -38,6 +38,15 @@ router.get("/", async (req, res) => {
         //Combine all filters using AND if any exist
         const whereClause = filterConditions.length > 0 ? and(...filterConditions) : undefined;
 
+        let orderByClause: any = desc(subjects.createdAt);
+
+        if (sortField && sortOrder) {
+            const column = (subjects as any)[sortField as string];
+            if (column) {
+                orderByClause = sortOrder === 'asc' ? asc(column) : desc(column);
+            }
+        }
+
         const countResult = await db
             .select({ count: sql<number>`count(*)`})
             .from(subjects)
@@ -52,7 +61,7 @@ router.get("/", async (req, res) => {
                 department: { ...getTableColumns(departments)}
             }).from(subjects).leftJoin(departments, eq(subjects.departmentId, departments.id))
             .where(whereClause)
-            .orderBy(desc(subjects.createdAt))
+            .orderBy(orderByClause)
             .limit(limitPerPage)
             .offset(offset);
 

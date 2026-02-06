@@ -12,21 +12,51 @@ import cors from 'cors';
 import securityMiddleware from "./middleware/security.js";
 import {toNodeHandler} from "better-auth/node";
 import {auth} from "./lib/auth.js";
+import {authMiddleware} from "./middleware/auth.js";
 
 const app = express();
 const port = 8000;
 
-if(!process.env.FRONTEND_URL) throw new Error('FRONTEND_URL is not set in .env file');
+const frontendUrl = process.env.FRONTEND_URL?.replace(/'/g, "");
+
+if(!frontendUrl) throw new Error('FRONTEND_URL is not set in .env file');
 
 app.use(cors({
-    origin: process.env.FRONTEND_URL,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true
+    origin: (origin, callback) => {
+        const allowedOrigins = [frontendUrl, "http://localhost:5173", "http://127.0.0.1:5173"];
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true,
+    exposedHeaders: ["set-cookie"]
 }))
 
-app.all('/api/auth/*splat', toNodeHandler(auth));
+// Use a custom handler to log and pass to better-auth
+const authHandler = toNodeHandler(auth);
+app.all("/api/auth/*splat", async (req, res) => {
+    console.log(`[AuthRoute] Request: ${req.method} ${req.path}`);
+    return authHandler(req, res);
+});
 
 app.use(express.json());
+app.use(authMiddleware);
+
+
+// Diagnostic route (non‑prod only)
+if (process.env.NODE_ENV !== "production") {
+    app.get('/api/debug/session', (req, res) => {
+        res.json({
+            user: req.user,
+            headers: req.headers,
+            cookies: req.headers.cookie,
+            timestamp: new Date().toISOString()
+        });
+    });
+}
 
 app.use(securityMiddleware);
 

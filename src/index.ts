@@ -45,15 +45,18 @@ app.all("/api/auth/*splat", async (req, res) => {
 app.use(express.json());
 app.use(authMiddleware);
 
-// Diagnostic route
-app.get('/api/debug/session', (req, res) => {
-    res.json({
-        user: req.user,
-        headers: req.headers,
-        cookies: req.headers.cookie,
-        timestamp: new Date().toISOString()
+
+// Diagnostic route (non‑prod only)
+if (process.env.NODE_ENV !== "production") {
+    app.get('/api/debug/session', (req, res) => {
+        res.json({
+            user: req.user,
+            headers: req.headers,
+            cookies: req.headers.cookie,
+            timestamp: new Date().toISOString()
+        });
     });
-});
+}
 
 app.use(securityMiddleware);
 

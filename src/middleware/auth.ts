@@ -16,9 +16,12 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         
         const cookie = req.headers.cookie;
         const authHeader = req.headers.authorization;
-        
-        console.log(`[Cookie String]: ${cookie || 'NONE'}`);
-        console.log(`[Auth Header]: ${authHeader || 'NONE'}`);
+
+        const debug = process.env.NODE_ENV !== "production";
+        if (debug) {
+            console.debug(`[Cookie Present]: ${Boolean(cookie)}`);
+            console.debug(`[Auth Header Present]: ${Boolean(authHeader)}`);
+        }
 
         // 1. Try Better-Auth's standard session retrieval
         let effectiveHeaders = fromNodeHeaders(req.headers);
@@ -44,7 +47,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         // 2. FAIL-SAFE: If Better-Auth fails, try direct Database lookup
         // This bypasses any cookie/header parsing issues inside the library
         if (!session && token) {
-            console.log(`[Fail-Safe] Better-Auth failed. Attempting direct Database lookup for token: ${token.substring(0, 10)}...`);
+            console.log(`[Fail-Safe] Better-Auth failed. Attempting direct Database lookup for bearer token.`);
             try {
                 const [dbSession] = await db
                     .select({
@@ -62,7 +65,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
                     .limit(1);
 
                 if (dbSession) {
-                    console.log(`[Fail-Safe SUCCESS] Found valid session in DB for: ${dbSession.user.email}`);
+                    console.log(`[Fail-Safe SUCCESS] Found valid session in DB.`);
                     session = {
                         user: dbSession.user,
                         session: dbSession.session
@@ -76,7 +79,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         }
 
         if (session) {
-            console.log(`[FINAL RESULT] SUCCESS. User: ${session.user.email} (Role: ${session.user.role})`);
+            console.log(`[FINAL RESULT] SUCCESS. User role: ${session.user.role}`);
             req.user = session.user as any;
         } else {
             console.log(`[FINAL RESULT] FAILURE. No session identified.`);

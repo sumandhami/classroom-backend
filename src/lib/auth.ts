@@ -3,6 +3,9 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "../db/index.js";
 import * as schema from '../db/schema/auth.js'
 
+const useSecureCookies = process.env.NODE_ENV === "production";
+const frontendOrigin = process.env.FRONTEND_URL?.replace(/'/g, "");
+
 export const auth = betterAuth({
     secret: process.env.BETTER_AUTH_SECRET!,
     database: drizzleAdapter(db, {
@@ -11,13 +14,14 @@ export const auth = betterAuth({
     }),
     baseURL: process.env.BETTER_AUTH_BASE_URL || "http://localhost:8000",
     advanced: {
-        useSecureCookies: false, // Set to true in production with HTTPS
+        useSecureCookies,
     },
     cookie: {
         namePrefix: "better-auth",
         attributes: {
             sameSite: "Lax",
             httpOnly: true,
+            secure: useSecureCookies,
         },
         maxAge: 7 * 24 * 60 * 60, // 7 days
     },
@@ -35,7 +39,7 @@ export const auth = betterAuth({
             },
         }
     ],
-    trustedOrigins: [process.env.FRONTEND_URL?.replace(/'/g, "")!, "http://localhost:5173", "http://127.0.0.1:5173"],
+    trustedOrigins: [frontendOrigin, "http://localhost:5173", "http://127.0.0.1:5173"].filter(Boolean) as string[],
     basePath: "/api/auth",
     session: {
         cookieCache: {
@@ -52,7 +56,9 @@ export const auth = betterAuth({
         autoSignInAfterVerification: true,
         sendVerificationEmail: async ({ user, url, token }, request) => {
             const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
-            console.log(`Sending verification email to ${user.email}: ${verificationUrl}`);
+            if (process.env.NODE_ENV !== "production") {
+                                console.debug(`Sending verification email to ${user.email}: ${verificationUrl}`);
+                            }
         },
     },
     user: {

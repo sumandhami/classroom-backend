@@ -14,10 +14,10 @@ router.get("/stats", async (req, res) => {
 
         res.json({
             data: {
-                users: usersCount.value,
-                classes: classesCount.value,
-                enrollments: enrollmentsCount.value,
-                subjects: subjectsCount.value
+                users: usersCount?.value ?? 0,        // ← Add ?? 0
+                classes: classesCount?.value ?? 0,
+                enrollments: enrollmentsCount?.value ?? 0,
+                subjects: subjectsCount?.value ?? 0
             }
         });
     } catch (e) {
@@ -52,7 +52,7 @@ router.get("/charts/classes-by-dept", async (req, res) => {
             .leftJoin(subjects, eq(subjects.departmentId, departments.id))
             .leftJoin(classes, eq(classes.subjectId, subjects.id))
             .groupBy(departments.id)
-            .orderBy(sql`count desc`);
+            .orderBy(sql`count(*) desc`);
 
         res.json({ data });
     } catch (e) {

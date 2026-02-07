@@ -23,7 +23,11 @@ if(!frontendUrl) throw new Error('FRONTEND_URL is not set in .env file');
 
 app.use(cors({
     origin: (origin, callback) => {
-        const allowedOrigins = [frontendUrl, "http://localhost:5173", "http://127.0.0.1:5173"];
+        const allowedOrigins = [
+            frontendUrl,
+            "http://localhost:5173",
+            "http://127.0.0.1:5173"
+        ];
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
@@ -43,8 +47,6 @@ app.all("/api/auth/*splat", async (req, res) => {
 });
 
 app.use(express.json());
-app.use(authMiddleware);
-
 
 // Diagnostic route (non‑prod only)
 if (process.env.NODE_ENV !== "production") {
@@ -58,8 +60,13 @@ if (process.env.NODE_ENV !== "production") {
     });
 }
 
+// ✅ Auth middleware runs first to populate req.user
+app.use(authMiddleware);
+
+// ✅ Security middleware runs second to check rate limits
 app.use(securityMiddleware);
 
+// ✅ Routes defined last
 app.use('/api/subjects', subjectsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/classes', classesRouter);

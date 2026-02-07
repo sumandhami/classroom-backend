@@ -67,7 +67,7 @@ router.get("/", async (req, res) => {
 
         console.log(`[GET /api/users] Found ${userList.length} users`);
         if (userList.length > 0) {
-            console.log(`[GET /api/users] First user role: ${userList[0].role}`);
+            console.log(`[GET /api/users] First user role: ${userList[0]?.role}`);  // ✅ Add ?
         }
 
         res.status(200).json({

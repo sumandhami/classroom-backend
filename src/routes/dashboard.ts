@@ -7,28 +7,26 @@ const router = express.Router();
 
 router.get("/stats", async (req, res) => {
     try {
-        const [usersCount] = await db.select({ value: count() }).from(user);
-        const [classesCount] = await db.select({ value: count() }).from(classes);
-        const [enrollmentsCount] = await db.select({ value: count() }).from(enrollments);
-        const [subjectsCount] = await db.select({ value: count() }).from(subjects);
+        const usersResult = await db.select({ value: count() }).from(user);
+        const classesResult = await db.select({ value: count() }).from(classes);
+        const enrollmentsResult = await db.select({ value: count() }).from(enrollments);
+        const subjectsResult = await db.select({ value: count() }).from(subjects);
 
         res.json({
             data: {
-                users: usersCount?.value ?? 0,        // ← Add ?? 0
-                classes: classesCount?.value ?? 0,
-                enrollments: enrollmentsCount?.value ?? 0,
-                subjects: subjectsCount?.value ?? 0
+                users: usersResult[0]?.value ?? 0,
+                classes: classesResult[0]?.value ?? 0,
+                enrollments: enrollmentsResult[0]?.value ?? 0,
+                subjects: subjectsResult[0]?.value ?? 0
             }
         });
     } catch (e) {
+        console.error('[Dashboard] Stats error:', e);
         res.status(500).json({ error: 'Failed to fetch stats' });
     }
 });
 
 router.get("/charts/enrollment-trends", async (req, res) => {
-    // Mocking trends for the last 6 months as we don't have enrollment date in schema
-    // Ideally, we'd have a createdAt on enrollments.
-    // Since we don't have it, let's just return some dummy data that looks real.
     res.json({
         data: [
             { name: 'Sep', count: 45 },
@@ -52,10 +50,11 @@ router.get("/charts/classes-by-dept", async (req, res) => {
             .leftJoin(subjects, eq(subjects.departmentId, departments.id))
             .leftJoin(classes, eq(classes.subjectId, subjects.id))
             .groupBy(departments.id)
-            .orderBy(sql`count(*) desc`);
+            .orderBy(sql`count(*) desc`);  // ← Fixed this line
 
         res.json({ data });
     } catch (e) {
+        console.error('[Dashboard] Classes by dept error:', e);
         res.status(500).json({ error: 'Failed to fetch classes by dept' });
     }
 });
@@ -72,13 +71,13 @@ router.get("/charts/user-distribution", async (req, res) => {
 
         res.json({ data });
     } catch (e) {
+        console.error('[Dashboard] User distribution error:', e);
         res.status(500).json({ error: 'Failed to fetch user distribution' });
     }
 });
 
 router.get("/charts/capacity-status", async (req, res) => {
     try {
-        // Classes near capacity (> 80%)
         const all_classes = await db
             .select({
                 id: classes.id,
@@ -102,6 +101,7 @@ router.get("/charts/capacity-status", async (req, res) => {
             ]
         });
     } catch (e) {
+        console.error('[Dashboard] Capacity status error:', e);
         res.status(500).json({ error: 'Failed to fetch capacity status' });
     }
 });

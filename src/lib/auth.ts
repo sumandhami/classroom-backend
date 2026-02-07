@@ -19,9 +19,10 @@ export const auth = betterAuth({
     cookie: {
         namePrefix: "better-auth",
         attributes: {
-            sameSite: "Lax",
-            httpOnly: true,
-            secure: useSecureCookies,
+           sameSite: useSecureCookies ? "none" : "lax", // ✅ Changed for cross-origin
+           httpOnly: true,
+           secure: useSecureCookies,
+           domain: useSecureCookies ? process.env.COOKIE_DOMAIN : undefined, // ✅ Add cookie domain
         },
         maxAge: 7 * 24 * 60 * 60, // 7 days
     },

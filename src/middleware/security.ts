@@ -56,8 +56,8 @@ const securityMiddleware = async (req: Request, res: Response, next: NextFunctio
 
         console.log(`[Security] Arcjet decision for role ${userRole}: ${decision.conclusion}. Path: ${req.path}. Limit: ${limit}`);
 
-        if (!decision.isAllowed()) {
-            console.log(`[Security] Request DENIED. Reason:`, decision.reason ? JSON.stringify(decision.reason) : 'Unknown');  // ✅ Check if reason exists
+        if (!decision.isAllowed() && decision.reason) {
+            console.log(`[Security] Request DENIED. Reason:`, JSON.stringify(decision.reason));
         }
 
         // ✅ Add checks for decision.reason existence

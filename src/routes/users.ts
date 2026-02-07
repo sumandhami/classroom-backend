@@ -53,7 +53,7 @@ router.get("/", async (req, res) => {
             .from(user)
             .where(whereClause);
 
-        const totalCount = Number(countResult[0]?.count ?? 0);  // ✅ Safe access with optional chaining
+        const totalCount = countResult[0] ? Number(countResult[0].count ?? 0) : 0;
 
         const userList = await db
             .select({

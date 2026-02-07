@@ -1,7 +1,7 @@
 import type {Request, Response, NextFunction} from "express";
 import aj from "../config/arcjet.js";
 import {ArcjetNodeRequest, slidingWindow} from "@arcjet/node";
-import { auth } from "../lib/auth.js"; // Import your Better Auth instance
+import { auth } from "../lib/auth.js";
 
 const securityMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     if(process.env.NODE_ENV === 'test') return next();
@@ -42,6 +42,7 @@ const securityMiddleware = async (req: Request, res: Response, next: NextFunctio
                 max: limit,
             })
         );
+
         const xff = req.headers['x-forwarded-for'];
         const forwarded = Array.isArray(xff) ? xff[0] : xff;
         const arcjetRequest: ArcjetNodeRequest = {
@@ -51,26 +52,27 @@ const securityMiddleware = async (req: Request, res: Response, next: NextFunctio
             socket: { remoteAddress: forwarded?.split(',')[0].trim() || req.socket.remoteAddress || req.ip || '0.0.0.0' }
         };
 
-        const decision = await client.protect(arcjetRequest, {
-            requested: 1,
-        });
+        const decision = await client.protect(arcjetRequest);  // ✅ Removed the second argument
 
         console.log(`[Security] Arcjet decision for role ${userRole}: ${decision.conclusion}. Path: ${req.path}. Limit: ${limit}`);
 
         if (!decision.isAllowed()) {
-            console.log(`[Security] Request DENIED. Reason:`, JSON.stringify(decision.reason));
+            console.log(`[Security] Request DENIED. Reason:`, decision.reason ? JSON.stringify(decision.reason) : 'Unknown');  // ✅ Check if reason exists
         }
 
-        if(decision.isDenied() && decision.reason.isBot()) {
-            return res.status(403).json({error: 'Forbidden', message: 'Automated requests are not allowed'});
-        }
+        // ✅ Add checks for decision.reason existence
+        if(decision.isDenied()) {
+            if (decision.reason?.isBot?.()) {
+                return res.status(403).json({error: 'Forbidden', message: 'Automated requests are not allowed'});
+            }
 
-        if(decision.isDenied() && decision.reason.isShield()) {
-            return res.status(403).json({error: 'Forbidden', message: 'Request blocked by security policy'});
-        }
+            if (decision.reason?.isShield?.()) {
+                return res.status(403).json({error: 'Forbidden', message: 'Request blocked by security policy'});
+            }
 
-        if(decision.isDenied() && decision.reason.isRateLimit()) {
-            return res.status(429).json({error: 'Too many requests', message });
+            if (decision.reason?.isRateLimit?.()) {
+                return res.status(429).json({error: 'Too many requests', message });
+            }
         }
 
         next();

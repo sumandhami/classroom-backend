@@ -1,5 +1,5 @@
 import express from 'express';
-import {and, desc, eq, getTableColumns, ilike, or, sql, asc} from "drizzle-orm";
+import {and, desc, eq, getTableColumns, ilike, or, sql, asc, count} from "drizzle-orm";  // ✅ Import count
 import {user} from "../db/schema/index.js";
 import {db} from "../db/index.js";
 
@@ -47,12 +47,13 @@ router.get("/", async (req, res) => {
             }
         }
 
+        // ✅ Use drizzle's count() instead of sql
         const countResult = await db
-            .select({ count: sql<number>`count(*)`})
+            .select({ count: count() })
             .from(user)
             .where(whereClause);
 
-        const totalCount = countResult[0]?.count ?? 0;
+        const totalCount = Number(countResult[0]?.count ?? 0);  // ✅ Safe access with optional chaining
 
         const userList = await db
             .select({

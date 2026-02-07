@@ -1,5 +1,5 @@
 import express from 'express';
-import {and, eq, getTableColumns, sql} from "drizzle-orm";
+import {and, eq, getTableColumns, sql, count as drizzleCount} from "drizzle-orm";  // ✅ Import count from drizzle
 import {enrollments, classes} from "../db/schema/index.js";
 import {user} from "../db/schema/index.js";
 import {db} from "../db/index.js";
@@ -39,12 +39,15 @@ router.post("/", async (req, res) => {
 
         if (!targetClass) return res.status(404).json({error: 'Class not found'});
 
-        const [{count}] = await db
-            .select({count: sql`count(*)`})
+        // ✅ Fixed: Use drizzle count() and handle potentially undefined result
+        const result = await db
+            .select({count: drizzleCount()})
             .from(enrollments)
             .where(eq(enrollments.classId, classId));
 
-        if (Number(count) >= targetClass.capacity) {
+        const enrollmentCount = result[0]?.count ?? 0;  // ✅ Safe access with fallback
+
+        if (Number(enrollmentCount) >= targetClass.capacity) {
             return res.status(400).json({message: 'Class is full'});
         }
 

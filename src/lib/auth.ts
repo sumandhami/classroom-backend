@@ -15,10 +15,6 @@ export const auth = betterAuth({
     baseURL: process.env.BETTER_AUTH_BASE_URL || "http://localhost:8000",
     advanced: {
         useSecureCookies,
-        defaultRedirectURL: (frontendOrigin || "http://localhost:5173").replace(/\/$/, ""),
-          crossSubDomainCookies: {
-            enabled: true,
-        },
     },
     socialProviders: {
         google: {
@@ -66,7 +62,9 @@ export const auth = betterAuth({
         cookieCache: {
             enabled: true,
             maxAge: 5 * 60, // 5 minutes
-        }
+        },
+        expiresIn: 7 * 24 * 60 * 60, // 7 days
+        updateAge: 24 * 60 * 60, // Update every 24 hours
     },
     emailAndPassword: {
         enabled: true,

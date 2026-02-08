@@ -16,6 +16,9 @@ export const auth = betterAuth({
     advanced: {
         useSecureCookies,
         defaultRedirectURL: (frontendOrigin || "http://localhost:5173").replace(/\/$/, ""),
+          crossSubDomainCookies: {
+            enabled: true,
+        },
     },
     socialProviders: {
         google: {

@@ -39,7 +39,7 @@ export const auth = betterAuth({
            sameSite: useSecureCookies ? "none" : "lax",
            httpOnly: true,
            secure: useSecureCookies,
-           domain: useSecureCookies ? process.env.COOKIE_DOMAIN : undefined,
+        //    domain: useSecureCookies ? process.env.COOKIE_DOMAIN : undefined,
         },
         maxAge: 7 * 24 * 60 * 60, // 7 days
     },

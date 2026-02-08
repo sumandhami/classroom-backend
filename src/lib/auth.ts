@@ -2,11 +2,9 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "../db/index.js";
 import * as schema from '../db/schema/auth.js'
-import { eq } from "drizzle-orm";
 
 const useSecureCookies = process.env.NODE_ENV === "production";
 const frontendOrigin = process.env.FRONTEND_URL?.replace(/'/g, "");
-console.log("🔍 Frontend Origin:", frontendOrigin); // ✅ ADD THIS
 
 export const auth = betterAuth({
     secret: process.env.BETTER_AUTH_SECRET!,
@@ -17,33 +15,27 @@ export const auth = betterAuth({
     baseURL: process.env.BETTER_AUTH_BASE_URL || "http://localhost:8000",
     advanced: {
         useSecureCookies,
-        // ✅ FIX: Use absolute URL with trailing slash removed
         defaultRedirectURL: (frontendOrigin || "http://localhost:5173").replace(/\/$/, ""),
     },
     socialProviders: {
         google: {
             clientId: process.env.GOOGLE_CLIENT_ID!,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-            redirectURI: `${process.env.BETTER_AUTH_BASE_URL || "http://localhost:8000"}/api/auth/callback/google`,
         },
-        github: {
-            clientId: process.env.GITHUB_CLIENT_ID!,
-            clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-            redirectURI: `${process.env.BETTER_AUTH_BASE_URL || "http://localhost:8000"}/api/auth/callback/github`,
-        },
+        ...(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET
+            ? {
+                  github: {
+                      clientId: process.env.GITHUB_CLIENT_ID,
+                      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+                  },
+              }
+            : {}),
     },
-    callbacks: {
-        async onOAuthAccountNotLinked({ user, account }) {
-            if (!user.role) {
-                await db.update(schema.user)
-                    .set({ role: 'student' })
-                    .where(eq(schema.user.id, user.id));
-            }
-        },
-    },
+    // ❌ REMOVE callbacks - defaultValue handles it
     cookie: {
         namePrefix: "better-auth",
         attributes: {
+           // ✅ Better cookie settings for cross-browser compatibility
            sameSite: useSecureCookies ? "none" : "lax",
            httpOnly: true,
            secure: useSecureCookies,
@@ -92,7 +84,7 @@ export const auth = betterAuth({
             role: {
                 type: "string", 
                 required: true, 
-                defaultValue: 'student', // ✅ Changed from 'default' to 'defaultValue'
+                defaultValue: 'student', // ✅ This handles OAuth users automatically
                 input: true,
             },
             imageCldPubId: {
@@ -103,5 +95,3 @@ export const auth = betterAuth({
         }
     }
 });
-
-console.log("🔍 Auth Config - defaultRedirectURL:", (frontendOrigin || "http://localhost:5173").replace(/\/$/, ""));

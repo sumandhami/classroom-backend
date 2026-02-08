@@ -43,11 +43,13 @@ app.use(cors({
 const authHandler = toNodeHandler(auth);
 app.all("/api/auth/*splat", async (req, res) => {
     console.log(`[AuthRoute] Request: ${req.method} ${req.path}`);
-    console.log(`[AuthRoute] Query params:`, req.query); // ✅ ADD THIS
+    const safeQuery =
+    process.env.NODE_ENV === "production" ? Object.keys(req.query) : req.query;
+    console.log(`[AuthRoute] Query params:`, safeQuery);
     
     if (req.path.startsWith('/api/auth/callback/')) {
         console.log("🎯 OAuth Callback detected!");
-        console.log("🔍 Callback query params:", req.query); // ✅ ADD THIS
+        console.log("🔍 Callback query params:", safeQuery);
         
         // Let Better Auth handle the callback first
         await authHandler(req, res);

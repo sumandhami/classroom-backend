@@ -43,9 +43,31 @@ app.use(cors({
 const authHandler = toNodeHandler(auth);
 app.all("/api/auth/*splat", async (req, res) => {
     console.log(`[AuthRoute] Request: ${req.method} ${req.path}`);
+    const safeQuery =
+    process.env.NODE_ENV === "production" ? Object.keys(req.query) : req.query;
+    console.log(`[AuthRoute] Query params:`, safeQuery);
+    
+    if (req.path.startsWith('/api/auth/callback/')) {
+        console.log("🎯 OAuth Callback detected!");
+        console.log("🔍 Callback query params:", safeQuery);
+        
+        // Let Better Auth handle the callback first
+        await authHandler(req, res);
+        
+        console.log("✅ Better Auth finished processing");
+        console.log("📝 Response sent?", res.headersSent);
+        
+        if (!res.headersSent) {
+            console.log("🔄 Attempting redirect to:", frontendUrl);
+            return res.redirect(frontendUrl);
+        } else {
+            console.log("⚠️ Response already sent, cannot redirect");
+        }
+        return;
+    }
+    
     return authHandler(req, res);
 });
-
 app.use(express.json());
 
 // Diagnostic route (non‑prod only)

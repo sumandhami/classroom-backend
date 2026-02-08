@@ -15,14 +15,31 @@ export const auth = betterAuth({
     baseURL: process.env.BETTER_AUTH_BASE_URL || "http://localhost:8000",
     advanced: {
         useSecureCookies,
+        defaultRedirectURL: (frontendOrigin || "http://localhost:5173").replace(/\/$/, ""),
     },
+    socialProviders: {
+        google: {
+            clientId: process.env.GOOGLE_CLIENT_ID!,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        },
+        ...(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET
+            ? {
+                  github: {
+                      clientId: process.env.GITHUB_CLIENT_ID,
+                      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+                  },
+              }
+            : {}),
+    },
+    // ❌ REMOVE callbacks - defaultValue handles it
     cookie: {
         namePrefix: "better-auth",
         attributes: {
-           sameSite: useSecureCookies ? "none" : "lax", // ✅ Changed for cross-origin
+           // ✅ Better cookie settings for cross-browser compatibility
+           sameSite: useSecureCookies ? "none" : "lax",
            httpOnly: true,
            secure: useSecureCookies,
-           domain: useSecureCookies ? process.env.COOKIE_DOMAIN : undefined, // ✅ Add cookie domain
+           domain: useSecureCookies ? process.env.COOKIE_DOMAIN : undefined,
         },
         maxAge: 7 * 24 * 60 * 60, // 7 days
     },
@@ -58,17 +75,22 @@ export const auth = betterAuth({
         sendVerificationEmail: async ({ user, url, token }, request) => {
             const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
             if (process.env.NODE_ENV !== "production") {
-                                console.debug(`Sending verification email to ${user.email}: ${verificationUrl}`);
-                            }
+                console.debug(`Sending verification email to ${user.email}: ${verificationUrl}`);
+            }
         },
     },
     user: {
         additionalFields: {
             role: {
-                type: "string", required: true, default: 'student', input: true,
+                type: "string", 
+                required: true, 
+                defaultValue: 'student', // ✅ This handles OAuth users automatically
+                input: true,
             },
             imageCldPubId: {
-                type: "string", required: false, input: true,
+                type: "string", 
+                required: false, 
+                input: true,
             },
         }
     }

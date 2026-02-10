@@ -74,33 +74,33 @@ export const auth = betterAuth({
         requireEmailVerification: true,
     },
     emailVerification: {
-        sendOnSignUp: true,
-        autoSignInAfterVerification: true,
-        sendVerificationEmail: async ({ user, url, token }, request) => {
-            const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
-            
-            try {
-                await resend.emails.send({
-                    from: 'Classroom <noreply@send.classroom.sumandhami.com.np>', // ✅ Your verified domain
-                    to: user.email,
-                    subject: 'Verify your email address',
-                    html: `
-                        <h2>Welcome to Classroom!</h2>
-                        <p>Please verify your email address by clicking the button below:</p>
-                        <a href="${verificationUrl}" style="display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 6px;">
-                            Verify Email
-                        </a>
-                        <p>Or copy this link: ${verificationUrl}</p>
-                        <p>This link will expire in 1 hour.</p>
-                    `,
-                });
-                console.log(`✅ Verification email sent to ${user.email}`);
-            } catch (error) {
-                console.error('❌ Failed to send email:', error);
-                throw error;
-            }
-        },
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url, token }, request) => {
+        const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+        
+        try {
+            await resend.emails.send({
+                from: 'Classroom <noreply@send.classroom.sumandhami.com.np>',
+                to: user.email,
+                subject: 'Verify your email address',
+                html: `
+                    <h2>Welcome to Classroom!</h2>
+                    <p>Please verify your email address by clicking the button below:</p>
+                    <a href="${verificationUrl}" style="display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 6px;">
+                        Verify Email
+                    </a>
+                    <p>Or copy this link: ${verificationUrl}</p>
+                    <p>This link will expire in 1 hour.</p>
+                `,
+            });
+            console.log(`✅ Verification email sent to ${user.email}`); // Keep this one for monitoring
+        } catch (error) {
+            console.error('❌ Failed to send verification email:', error); // Keep this for errors
+            throw error;
+        }
     },
+},
     user: {
         additionalFields: {
             role: {

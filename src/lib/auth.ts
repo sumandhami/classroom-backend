@@ -2,6 +2,9 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "../db/index.js";
 import * as schema from '../db/schema/auth.js'
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const useSecureCookies = process.env.NODE_ENV === "production";
 const frontendOrigin = process.env.FRONTEND_URL?.replace(/'/g, "");
@@ -75,8 +78,26 @@ export const auth = betterAuth({
         autoSignInAfterVerification: true,
         sendVerificationEmail: async ({ user, url, token }, request) => {
             const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
-            if (process.env.NODE_ENV !== "production") {
-                console.debug(`Sending verification email to ${user.email}: ${verificationUrl}`);
+            
+            try {
+                await resend.emails.send({
+                    from: 'Classroom <onboarding@resend.dev>', // Use Resend's test domain
+                    to: user.email,
+                    subject: 'Verify your email address',
+                    html: `
+                        <h2>Welcome to Classroom!</h2>
+                        <p>Please verify your email address by clicking the button below:</p>
+                        <a href="${verificationUrl}" style="display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 6px;">
+                            Verify Email
+                        </a>
+                        <p>Or copy this link: ${verificationUrl}</p>
+                        <p>This link will expire in 1 hour.</p>
+                    `,
+                });
+                console.log(`✅ Verification email sent to ${user.email}`);
+            } catch (error) {
+                console.error('❌ Failed to send email:', error);
+                throw error;
             }
         },
     },

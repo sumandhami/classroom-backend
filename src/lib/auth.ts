@@ -81,7 +81,7 @@ export const auth = betterAuth({
             
             try {
                 await resend.emails.send({
-                    from: 'Classroom <onboarding@resend.dev>', // Use Resend's test domain
+                    from: 'Classroom <noreply@send.classroom.sumandhami.com.np>', // ✅ Your verified domain
                     to: user.email,
                     subject: 'Verify your email address',
                     html: `

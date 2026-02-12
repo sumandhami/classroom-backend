@@ -114,6 +114,11 @@ export const auth = betterAuth({
                 required: false, 
                 input: true,
             },
+             organizationId: {
+            type: "string",
+            required: true,
+            input: true,
+        }
         }
     }
 });

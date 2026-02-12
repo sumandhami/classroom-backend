@@ -1,6 +1,7 @@
 import {pgTable, text, timestamp, boolean, pgEnum, index, unique} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import { classes, enrollments } from "./app.js";
+import { classes, enrollments, teacherDepartments } from "./app";
+import { organization } from "./organization";
 
 export const roleEnum = pgEnum("role", ["student", "teacher", "admin"]);
 
@@ -13,12 +14,16 @@ export const user = pgTable("user", {
     id: text("id").primaryKey(),
     name: text("name").notNull(),
     email: text("email").notNull().unique(),
-    emailVerified: boolean("email_verified").notNull(),
+    emailVerified: boolean("email_verified").notNull().default(false),
     image: text("image"),
     role: roleEnum("role").default("student").notNull(),
     imageCldPubId: text("image_cld_pub_id"),
+    organizationId: text("organization_id").notNull().references(() => organization.id, { onDelete: 'cascade' }),
+
     ...timestamps
-});
+}, (table) => [
+    index("user_organization_id_idx").on(table.organizationId),
+]);
 
 export const session = pgTable("session", {
     id: text("id").primaryKey(),
@@ -56,18 +61,23 @@ export const verification = pgTable("verification", {
     id: text("id").primaryKey(),
     identifier: text("identifier").notNull(),
     value: text("value").notNull(),
-    expiresAt: timestamp("expires_at").notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()).notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    createdAt: timestamp('createdAt').defaultNow().notNull(),
+    updatedAt: timestamp('updatedAt').defaultNow().$onUpdate(() => new Date()).notNull(),
 }, (table) => [
     index("verification_identifier_idx").on(table.identifier),
 ]);
 
-export const userRelations = relations(user, ({ many }) => ({
+export const userRelations = relations(user, ({ many, one }) => ({
     sessions: many(session),
     accounts: many(account),
-    classes: many(classes),
-    enrollments: many(enrollments),
+    classes: many(classes), // Classes taught by teacher
+    enrollments: many(enrollments), // Classes enrolled as student
+    teacherDepartments: many(teacherDepartments), // NEW: Departments teacher belongs to
+    organization: one(organization, {
+        fields: [user.organizationId],
+        references: [organization.id],
+    }),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

@@ -7,6 +7,7 @@ import { user } from '../db/schema/auth.js'
 
 const router = express.Router();
 
+
 // Get all classes with optional search, filtering and pagination
 router.get("/", async (req, res) => {
     try {

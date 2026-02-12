@@ -7,7 +7,13 @@ const securityMiddleware = async (req: Request, res: Response, next: NextFunctio
     if(process.env.NODE_ENV === 'test') return next();
 
     // Skip rate limiting for non-API paths and auth endpoints
-    if (!req.path.startsWith('/api') || req.path.startsWith('/api/auth')) {
+
+    const publicPaths = [
+        '/api/auth',
+        '/api/organization/register', // ✅ Add this
+    ];
+    
+    if (!req.path.startsWith('/api') || publicPaths.some(path => req.path.startsWith(path))) {
         return next();
     }
 

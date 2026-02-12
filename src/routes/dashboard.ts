@@ -2,15 +2,22 @@ import express from 'express';
 import {count, eq, sql} from "drizzle-orm";
 import {db} from "../db/index.js";
 import {classes, departments, enrollments, subjects, user} from "../db/schema/index.js";
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
+router.use(authMiddleware); 
+
 router.get("/stats", async (req, res) => {
     try {
-        const usersResult = await db.select({ value: count() }).from(user);
-        const classesResult = await db.select({ value: count() }).from(classes);
+        const organizationId = req.user?.organizationId;
+        if (!organizationId) {
+            return res.status(400).json({ error: 'Organization ID not found in user session' });
+        }
+        const usersResult = await db.select({ value: count() }).from(user).where(eq(user.organizationId, organizationId));
+        const classesResult = await db.select({ value: count() }).from(classes).where(eq(classes.organizationId, organizationId));
         const enrollmentsResult = await db.select({ value: count() }).from(enrollments);
-        const subjectsResult = await db.select({ value: count() }).from(subjects);
+        const subjectsResult = await db.select({ value: count() }).from(subjects).where(eq(subjects.organizationId, organizationId));
 
         res.json({
             data: {

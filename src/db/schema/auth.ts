@@ -1,24 +1,23 @@
-import {pgTable, text, timestamp, boolean, pgEnum, index, unique} from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
-import { classes, enrollments } from "./app.js";
+import { pgTable, text, timestamp, boolean, pgEnum, index, unique } from "drizzle-orm/pg-core";
+import { organization } from "./organization.js";
+import { timestamps } from "./utils.js"; // ✅ Import from utils
 
 export const roleEnum = pgEnum("role", ["student", "teacher", "admin"]);
-
-const timestamps = {
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()).notNull()
-}
 
 export const user = pgTable("user", {
     id: text("id").primaryKey(),
     name: text("name").notNull(),
     email: text("email").notNull().unique(),
-    emailVerified: boolean("email_verified").notNull(),
+    emailVerified: boolean("email_verified").notNull().default(false),
     image: text("image"),
     role: roleEnum("role").default("student").notNull(),
     imageCldPubId: text("image_cld_pub_id"),
+    organizationId: text("organization_id").notNull().references(() => organization.id, { onDelete: 'cascade' }),
+
     ...timestamps
-});
+}, (table) => [
+    index("user_organization_id_idx").on(table.organizationId),
+]);
 
 export const session = pgTable("session", {
     id: text("id").primaryKey(),
@@ -45,8 +44,7 @@ export const account = pgTable("account", {
     refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
     scope: text("scope"),
     password: text("password"),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()).notNull(),
+    ...timestamps // ✅ Use shared timestamps
 }, (table) => [
     index("account_user_id_idx").on(table.userId),
     unique("account_provider_account_unique").on(table.providerId, table.accountId),
@@ -56,33 +54,14 @@ export const verification = pgTable("verification", {
     id: text("id").primaryKey(),
     identifier: text("identifier").notNull(),
     value: text("value").notNull(),
-    expiresAt: timestamp("expires_at").notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()).notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    createdAt: timestamp('createdAt').defaultNow().notNull(),
+    updatedAt: timestamp('updatedAt').defaultNow().$onUpdate(() => new Date()).notNull(),
 }, (table) => [
     index("verification_identifier_idx").on(table.identifier),
 ]);
 
-export const userRelations = relations(user, ({ many }) => ({
-    sessions: many(session),
-    accounts: many(account),
-    classes: many(classes),
-    enrollments: many(enrollments),
-}));
-
-export const sessionRelations = relations(session, ({ one }) => ({
-    user: one(user, {
-        fields: [session.userId],
-        references: [user.id],
-    }),
-}));
-
-export const accountRelations = relations(account, ({ one }) => ({
-    user: one(user, {
-        fields: [account.userId],
-        references: [user.id],
-    }),
-}));
+// ✅ Relations removed - they're now in relations.ts
 
 export type User = typeof user.$inferSelect;
 export type NewUser = typeof user.$inferInsert;

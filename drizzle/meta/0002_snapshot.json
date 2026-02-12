@@ -1,6 +1,6 @@
 {
-  "id": "41f09fd8-96ff-4845-972b-7a1963c6a81e",
-  "prevId": "82da5326-944f-4e73-89ac-0acfcce53729",
+  "id": "af95172f-6bb3-4327-8645-b9dd93fafa6b",
+  "prevId": "41f09fd8-96ff-4845-972b-7a1963c6a81e",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1041,21 +1041,21 @@
           "primaryKey": false,
           "notNull": true
         },
-        "expiresAt": {
-          "name": "expiresAt",
+        "expires_at": {
+          "name": "expires_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
-        "createdAt": {
-          "name": "createdAt",
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         },
-        "updatedAt": {
-          "name": "updatedAt",
+        "updated_at": {
+          "name": "updated_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true,

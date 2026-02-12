@@ -8,11 +8,13 @@ import classesRouter from "./routes/classes.js";
 import departmentsRouter from "./routes/departments.js";
 import enrollmentsRouter from "./routes/enrollments.js";
 import dashboardRouter from "./routes/dashboard.js";
+import organizationRouter from "./routes/organization.js";
 import cors from 'cors';
 import securityMiddleware from "./middleware/security.js";
 import {toNodeHandler} from "better-auth/node";
 import {auth} from "./lib/auth.js";
 import {authMiddleware} from "./middleware/auth.js";
+import { organizationSignupMiddleware } from "./middleware/organization-signup.js";
 
 const app = express();
 const port = 8000;
@@ -21,6 +23,7 @@ const frontendUrl = process.env.FRONTEND_URL?.replace(/'/g, "");
 
 if(!frontendUrl) throw new Error('FRONTEND_URL is not set in .env file');
 
+// ✅ 1. CORS first
 app.use(cors({
     origin: (origin, callback) => {
         const allowedOrigins = [
@@ -39,18 +42,18 @@ app.use(cors({
     exposedHeaders: ["set-cookie"]
 }))
 
-// Use a custom handler to log and pass to better-auth
+// ✅ 3. Organization signup middleware (intercepts /api/auth/sign-up/email)
+app.use(organizationSignupMiddleware);
+
+// ✅ 4. Better Auth handler
 const authHandler = toNodeHandler(auth);
 app.all("/api/auth/*splat", async (req, res) => {
     console.log(`[AuthRoute] Request: ${req.method} ${req.path}`);
     console.log(`[AuthRoute] Query params:`, req.query);
-    console.log(`[AuthRoute] Cookies:`, req.headers.cookie); // ✅ ADD
-    console.log(`[AuthRoute] Origin:`, req.headers.origin); // ✅ ADD
     
     if (req.path.startsWith('/api/auth/callback/')) {
         console.log("🎯 OAuth Callback detected!");
         console.log("🔍 State from query:", req.query.state);
-        console.log("🍪 All cookies:", req.headers.cookie); // ✅ ADD
         
         await authHandler(req, res);
         
@@ -68,6 +71,7 @@ app.all("/api/auth/*splat", async (req, res) => {
     
     return authHandler(req, res);
 });
+
 app.use(express.json());
 
 // Diagnostic route (non‑prod only)
@@ -82,19 +86,20 @@ if (process.env.NODE_ENV !== "production") {
     });
 }
 
-// ✅ Auth middleware runs first to populate req.user
+// ✅ 5. Auth middleware (for session checking on other routes)
 app.use(authMiddleware);
 
-// ✅ Security middleware runs second to check rate limits
+// ✅ 6. Security middleware (rate limiting based on user role)
 app.use(securityMiddleware);
 
-// ✅ Routes defined last
+// ✅ 7. Application routes
 app.use('/api/subjects', subjectsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/classes', classesRouter);
 app.use('/api/departments', departmentsRouter);
 app.use('/api/enrollments', enrollmentsRouter);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/api/organization', organizationRouter);
 
 app.get('/', (req, res) => {
     res.send('Hello, welcome to the Classroom API!');

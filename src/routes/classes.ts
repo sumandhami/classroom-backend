@@ -4,8 +4,11 @@ import {and, desc, eq, getTableColumns, ilike, or, sql, asc} from "drizzle-orm";
 import {db} from "../db/index.js";
 import {classes, departments, subjects} from '../db/schema/app.js'
 import { user } from '../db/schema/auth.js'
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
+
+router.use(authMiddleware); // All routes require authentication
 
 // Get all classes with optional search, filtering and pagination
 router.get("/", async (req, res) => {
@@ -58,7 +61,7 @@ router.get("/", async (req, res) => {
             .from(classes)
             .leftJoin(subjects, eq(classes.subjectId, subjects.id))
             .leftJoin(user, eq(classes.teacherId, user.id))
-            .where(whereClause);
+            .where(and(whereClause, eq(classes.organizationId, req.user?.organizationId!)));
 
         const totalCount = countResult[0]?.count ?? 0;
 
@@ -71,7 +74,7 @@ router.get("/", async (req, res) => {
             .from(classes)
             .leftJoin(subjects, eq(classes.subjectId, subjects.id))
             .leftJoin(user, eq(classes.teacherId, user.id))
-            .where(whereClause)
+            .where(and(whereClause, eq(classes.organizationId, req.user?.organizationId!)))
             .orderBy(orderByClause)
             .limit(limitPerPage)
             .offset(offset);
@@ -115,7 +118,7 @@ router.get('/:id', async (req, res) => {
         .leftJoin(subjects, eq(classes.subjectId, subjects.id))
         .leftJoin(user, eq(classes.teacherId, user.id))
         .leftJoin(departments, eq(subjects.departmentId, departments.id))
-        .where(eq(classes.id, classId))
+        .where(and(eq(classes.id, classId), eq(classes.organizationId, req.user?.organizationId!)));
 
     if(!classDetails) return res.status(404).json({ error: 'No Class found.' });
 
@@ -147,7 +150,7 @@ router.put('/:id', async (req, res) => {
         const [updatedClass] = await db
             .update(classes)
             .set(req.body)
-            .where(eq(classes.id, classId))
+            .where(and(eq(classes.id, classId), eq(classes.organizationId, req.user?.organizationId!)))
             .returning();
 
         if(!updatedClass) return res.status(404).json({ error: 'Class not found.' });
@@ -167,7 +170,7 @@ router.delete('/:id', async (req, res) => {
 
         const [deletedClass] = await db
             .delete(classes)
-            .where(eq(classes.id, classId))
+            .where(and(eq(classes.id, classId), eq(classes.organizationId, req.user?.organizationId!)))
             .returning();
 
         if(!deletedClass) return res.status(404).json({ error: 'Class not found.' });

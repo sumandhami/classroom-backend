@@ -9,7 +9,9 @@
     "start": "cross-env NODE_ENV=production node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +21,7 @@
     "@arcjet/inspect": "^1.0.0",
     "@arcjet/node": "^1.0.0",
     "@neondatabase/serverless": "^1.0.2",
+    "@node-rs/argon2": "^2.0.2",
     "apminsight": "^5.2.1",
     "better-auth": "^1.4.18",
     "cors": "^2.8.6",
@@ -30,7 +33,7 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/node": "^25.1.0",
+    "@types/node": "^25.2.3",
     "drizzle-kit": "^0.31.8",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"

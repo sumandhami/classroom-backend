@@ -1,14 +1,8 @@
-import {pgTable, text, timestamp, boolean, pgEnum, index, unique} from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
-import { classes, enrollments, teacherDepartments } from "./app";
+import { pgTable, text, timestamp, boolean, pgEnum, index, unique } from "drizzle-orm/pg-core";
 import { organization } from "./organization";
+import { timestamps } from "./utils"; // ✅ Import from utils
 
 export const roleEnum = pgEnum("role", ["student", "teacher", "admin"]);
-
-const timestamps = {
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()).notNull()
-}
 
 export const user = pgTable("user", {
     id: text("id").primaryKey(),
@@ -50,8 +44,7 @@ export const account = pgTable("account", {
     refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
     scope: text("scope"),
     password: text("password"),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()).notNull(),
+    ...timestamps // ✅ Use shared timestamps
 }, (table) => [
     index("account_user_id_idx").on(table.userId),
     unique("account_provider_account_unique").on(table.providerId, table.accountId),
@@ -68,31 +61,7 @@ export const verification = pgTable("verification", {
     index("verification_identifier_idx").on(table.identifier),
 ]);
 
-export const userRelations = relations(user, ({ many, one }) => ({
-    sessions: many(session),
-    accounts: many(account),
-    classes: many(classes), // Classes taught by teacher
-    enrollments: many(enrollments), // Classes enrolled as student
-    teacherDepartments: many(teacherDepartments), // NEW: Departments teacher belongs to
-    organization: one(organization, {
-        fields: [user.organizationId],
-        references: [organization.id],
-    }),
-}));
-
-export const sessionRelations = relations(session, ({ one }) => ({
-    user: one(user, {
-        fields: [session.userId],
-        references: [user.id],
-    }),
-}));
-
-export const accountRelations = relations(account, ({ one }) => ({
-    user: one(user, {
-        fields: [account.userId],
-        references: [user.id],
-    }),
-}));
+// ✅ Relations removed - they're now in relations.ts
 
 export type User = typeof user.$inferSelect;
 export type NewUser = typeof user.$inferInsert;

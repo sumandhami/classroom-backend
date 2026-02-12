@@ -6,9 +6,11 @@ import { eq } from 'drizzle-orm';
 import { generateId } from 'better-auth';
 import { hash } from '@node-rs/argon2';
 import { Resend } from 'resend';
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 const resend = new Resend(process.env.RESEND_API_KEY);
+router.use(authMiddleware); // All routes require authentication
 
 // Register new organization with admin user
 // router.post('/register', async (req, res) => {
@@ -155,6 +157,9 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // Get organization details (for authenticated admins)
 router.get('/:id', async (req, res) => {
     try {
+               if (req.user?.organizationId !== req.params.id) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
         const [org] = await db
             .select()
             .from(organization)

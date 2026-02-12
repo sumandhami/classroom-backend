@@ -42,9 +42,6 @@ app.use(cors({
     exposedHeaders: ["set-cookie"]
 }))
 
-// ✅ 2. Parse JSON body (BEFORE organization middleware)
-app.use(express.json());
-
 // ✅ 3. Organization signup middleware (intercepts /api/auth/sign-up/email)
 app.use(organizationSignupMiddleware);
 
@@ -53,13 +50,10 @@ const authHandler = toNodeHandler(auth);
 app.all("/api/auth/*splat", async (req, res) => {
     console.log(`[AuthRoute] Request: ${req.method} ${req.path}`);
     console.log(`[AuthRoute] Query params:`, req.query);
-    console.log(`[AuthRoute] Cookies:`, req.headers.cookie);
-    console.log(`[AuthRoute] Origin:`, req.headers.origin);
     
     if (req.path.startsWith('/api/auth/callback/')) {
         console.log("🎯 OAuth Callback detected!");
         console.log("🔍 State from query:", req.query.state);
-        console.log("🍪 All cookies:", req.headers.cookie);
         
         await authHandler(req, res);
         
@@ -77,6 +71,8 @@ app.all("/api/auth/*splat", async (req, res) => {
     
     return authHandler(req, res);
 });
+
+app.use(express.json());
 
 // Diagnostic route (non‑prod only)
 if (process.env.NODE_ENV !== "production") {

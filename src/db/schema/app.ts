@@ -4,22 +4,16 @@ import {
     pgEnum,
     pgTable,
     text,
-    timestamp,
     unique,
     varchar,
     index,
     primaryKey
 } from "drizzle-orm/pg-core";
-import {relations} from "drizzle-orm";
-import {user} from "./auth";
-import {organization} from "./organization";
+import { organization } from "./organization";
+import { user } from "./auth";
+import { timestamps } from "./utils"; // ✅ Import from utils
 
 export const classStatusEnum = pgEnum('class_status', ['active', 'inactive', 'archived']);
-
-const timestamps = {
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()).notNull()
-}
 
 export const departments = pgTable('departments', {
     id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
@@ -29,7 +23,6 @@ export const departments = pgTable('departments', {
     description: varchar('description', {length: 255}),
     ...timestamps
 }, (table) => [
-    // Department code must be unique within organization
     unique("dept_code_org_unique").on(table.code, table.organizationId),
     index("dept_organization_id_idx").on(table.organizationId),
 ]);
@@ -88,65 +81,7 @@ export const enrollments = pgTable('enrollments', {
     index('enrollments_class_id_idx').on(table.classId),
 ]);
 
-export const departmentRelations = relations(departments, ({ many, one }) => ({ 
-    subjects: many(subjects),
-    teacherDepartments: many(teacherDepartments), // NEW
-    organization: one(organization, {
-        fields: [departments.organizationId],
-        references: [organization.id],
-    }),
-}));
-
-export const teacherDepartmentsRelations = relations(teacherDepartments, ({ one }) => ({
-    teacher: one(user, {
-        fields: [teacherDepartments.teacherId],
-        references: [user.id],
-    }),
-    department: one(departments, {
-        fields: [teacherDepartments.departmentId],
-        references: [departments.id],
-    }),
-}));
-
-export const subjectsRelations = relations(subjects, ({ one, many }) => ({
-    department: one(departments, {
-        fields: [subjects.departmentId],
-        references: [departments.id],
-    }),
-    organization: one(organization, {
-        fields: [subjects.organizationId],
-        references: [organization.id],
-    }),
-    classes: many(classes)
-}));
-
-export const classesRelations = relations(classes, ({ one, many }) => ({
-    subject: one(subjects, {
-        fields: [classes.subjectId],
-        references: [subjects.id],
-    }),
-    teacher: one(user, {
-        fields: [classes.teacherId],
-        references: [user.id],
-    }),
-    organization: one(organization, {
-        fields: [classes.organizationId],
-        references: [organization.id],
-    }),
-    enrollments: many(enrollments)
-}));
-
-export const enrollmentsRelations = relations(enrollments, ({ one }) => ({
-    student: one(user, {
-        fields: [enrollments.studentId],
-        references: [user.id],
-    }),
-    class: one(classes, {
-        fields: [enrollments.classId],
-        references: [classes.id],
-    }),
-}));
-
+// ✅ Keep type exports
 export type Department = typeof departments.$inferSelect;
 export type NewDepartment = typeof departments.$inferInsert;
 

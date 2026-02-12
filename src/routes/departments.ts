@@ -11,6 +11,10 @@ router.use(authMiddleware);
 // Get all departments with optional search and pagination
 router.get("/", async (req, res) => {
     try {
+         const organizationId = req.user?.organizationId;
+        if (!organizationId) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
         const {search, page = 1, limit = 10, sortField, sortOrder} = req.query;
 
         const currentPage = Math.max(1, parseInt(String(page), 10) || 1);
@@ -49,7 +53,7 @@ router.get("/", async (req, res) => {
                 ...getTableColumns(departments)
             })
             .from(departments)
-            .where(and(whereClause, eq(departments.organizationId, req.user?.organizationId!)))
+            .where(and(whereClause, eq(departments.organizationId, organizationId)))
             .orderBy(orderByClause)
             .limit(limitPerPage)
             .offset(offset);

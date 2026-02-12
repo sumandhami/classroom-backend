@@ -107,13 +107,21 @@ router.get("/:id", async (req, res) => {
 // Create subject
 router.post("/", async (req, res) => {
     try {
+        const organizationId = req.user?.organizationId;
+        if (!organizationId) return res.status(400).json({ error: "Missing organizationId" });
+
         const [newSubject] = await db
             .insert(subjects)
-            .values(req.body)
+            .values({
+                ...req.body,
+                organizationId, // ✅ Always set from session/user
+            })
             .returning();
-        res.status(201).json({data: newSubject});
+
+        res.status(201).json({ data: newSubject });
     } catch (e) {
-        res.status(500).json({error: 'Failed to create subject'});
+        console.error(`POST /subjects error ${e}`);
+        res.status(500).json({ error: 'Failed to create subject' });
     }
 });
 

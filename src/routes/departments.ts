@@ -96,13 +96,23 @@ router.get("/:id", async (req, res) => {
 // Create department
 router.post("/", async (req, res) => {
     try {
+        const organizationId = req.user?.organizationId;
+        if (!organizationId) {
+            return res.status(400).json({ error: "Missing organizationId" });
+        }
+
         const [newDept] = await db
             .insert(departments)
-            .values(req.body)
+            .values({
+                ...req.body,
+                organizationId, // ✅ Always set from session/user
+            })
             .returning();
-        res.status(201).json({data: newDept});
+
+        res.status(201).json({ data: newDept });
     } catch (e) {
-        res.status(500).json({error: 'Failed to create department'});
+        console.error('[Department Create Error]:', e); // Add this for debugging!
+        res.status(500).json({ error: e });
     }
 });
 

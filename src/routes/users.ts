@@ -1,9 +1,11 @@
 import express from 'express';
-import {and, desc, eq, getTableColumns, ilike, or, sql, asc, count} from "drizzle-orm";  // ✅ Import count
+import {and, desc, eq, getTableColumns, ilike, or, sql, asc, count, ne} from "drizzle-orm";  // ✅ Add ne (not equal)
 import {user} from "../db/schema/index.js";
 import {db} from "../db/index.js";
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
+router.use(authMiddleware); // All routes require authentication
 
 // Get all users with optional search, filtering and pagination
 router.get("/", async (req, res) => {
@@ -11,12 +13,25 @@ router.get("/", async (req, res) => {
         const {search, role, page = 1, limit = 10, sortField, sortOrder} = req.query;
         console.log(`[GET /api/users] Query Params:`, req.query);
 
+        // ✅ Get current user's organization
+        const currentUserOrgId = req.user?.organizationId;
+        
+        if (!currentUserOrgId) {
+            return res.status(403).json({error: 'User not associated with any organization'});
+        }
+
         const currentPage = Math.max(1, parseInt(String(page), 10) || 1);
         const limitPerPage = Math.min(Math.max(1, parseInt(String(limit), 10) || 10), 100);
 
         const offset = (currentPage - 1) * limitPerPage;
 
         const filterConditions = [];
+
+        // ✅ ALWAYS filter by organization
+        filterConditions.push(eq(user.organizationId, currentUserOrgId));
+
+        // ✅ ALWAYS exclude admin role (only show teachers and students)
+        filterConditions.push(ne(user.role, 'admin'));
 
         // if search query exists, filter by name or email
         if (search) {
@@ -28,14 +43,17 @@ router.get("/", async (req, res) => {
             );
         }
 
-        // if role filter exists, match role exactly
+        // if role filter exists, match role exactly (teacher or student)
         if (role) {
             console.log(`[GET /api/users] Applying role filter: ${role}`);
-            filterConditions.push(eq(user.role, role as any));
+            // ✅ Only allow filtering by teacher or student
+            if (role === 'teacher' || role === 'student') {
+                filterConditions.push(eq(user.role, role as any));
+            }
         }
 
-        // Combine all filters using AND if any exist
-        const whereClause = filterConditions.length > 0 ? and(...filterConditions) : undefined;
+        // Combine all filters using AND
+        const whereClause = and(...filterConditions);
         console.log(`[GET /api/users] filterConditions length: ${filterConditions.length}`);
 
         let orderByClause: any = desc(user.createdAt);
@@ -47,7 +65,7 @@ router.get("/", async (req, res) => {
             }
         }
 
-        // ✅ Use drizzle's count() instead of sql
+        // Get total count
         const countResult = await db
             .select({ count: count() })
             .from(user)
@@ -55,6 +73,7 @@ router.get("/", async (req, res) => {
 
         const totalCount = countResult[0] ? Number(countResult[0].count ?? 0) : 0;
 
+        // Get paginated users
         const userList = await db
             .select({
                 ...getTableColumns(user)
@@ -65,9 +84,9 @@ router.get("/", async (req, res) => {
             .limit(limitPerPage)
             .offset(offset);
 
-        console.log(`[GET /api/users] Found ${userList.length} users`);
+        console.log(`[GET /api/users] Found ${userList.length} users for organization ${currentUserOrgId}`);
         if (userList.length > 0) {
-            console.log(`[GET /api/users] First user role: ${userList[0]?.role}`);  // ✅ Add ?
+            console.log(`[GET /api/users] First user role: ${userList[0]?.role}`);
         }
 
         res.status(200).json({
@@ -89,10 +108,23 @@ router.get("/", async (req, res) => {
 // Get one user
 router.get("/:id", async (req, res) => {
     try {
+        // ✅ Get current user's organization
+        const currentUserOrgId = req.user?.organizationId;
+        
+        if (!currentUserOrgId) {
+            return res.status(403).json({error: 'User not associated with any organization'});
+        }
+
         const [userData] = await db
             .select()
             .from(user)
-            .where(eq(user.id, req.params.id));
+            .where(
+                and(
+                    eq(user.id, req.params.id),
+                    eq(user.organizationId, currentUserOrgId), // ✅ Only from same org
+                    ne(user.role, 'admin') // ✅ Don't allow viewing admin users
+                )
+            );
 
         if (!userData) return res.status(404).json({error: 'User not found'});
 
@@ -105,10 +137,37 @@ router.get("/:id", async (req, res) => {
 // Update user
 router.put("/:id", async (req, res) => {
     try {
+        // ✅ Get current user's organization and role
+        const currentUserOrgId = req.user?.organizationId;
+        const currentUserRole = req.user?.role;
+        
+        if (!currentUserOrgId) {
+            return res.status(403).json({error: 'User not associated with any organization'});
+        }
+
+        // ✅ Don't allow changing role to admin or updating admin users
+        if (req.body.role === 'admin') {
+            return res.status(403).json({error: 'Cannot set role to admin'});
+        }
+
+        // ✅ Only admins can update users
+        if (currentUserRole !== 'admin') {
+            return res.status(403).json({error: 'Only admins can update users'});
+        }
+
         const [updatedUser] = await db
             .update(user)
-            .set(req.body)
-            .where(eq(user.id, req.params.id))
+            .set({
+                ...req.body,
+                organizationId: currentUserOrgId, // ✅ Prevent changing organization
+            })
+            .where(
+                and(
+                    eq(user.id, req.params.id),
+                    eq(user.organizationId, currentUserOrgId), // ✅ Only from same org
+                    ne(user.role, 'admin') // ✅ Don't allow updating admin users
+                )
+            )
             .returning();
 
         if (!updatedUser) return res.status(404).json({error: 'User not found'});
@@ -122,9 +181,28 @@ router.put("/:id", async (req, res) => {
 // Delete user
 router.delete("/:id", async (req, res) => {
     try {
+        // ✅ Get current user's organization and role
+        const currentUserOrgId = req.user?.organizationId;
+        const currentUserRole = req.user?.role;
+        
+        if (!currentUserOrgId) {
+            return res.status(403).json({error: 'User not associated with any organization'});
+        }
+
+        // ✅ Only admins can delete users
+        if (currentUserRole !== 'admin') {
+            return res.status(403).json({error: 'Only admins can delete users'});
+        }
+
         const [deletedUser] = await db
             .delete(user)
-            .where(eq(user.id, req.params.id))
+            .where(
+                and(
+                    eq(user.id, req.params.id),
+                    eq(user.organizationId, currentUserOrgId), // ✅ Only from same org
+                    ne(user.role, 'admin') // ✅ Don't allow deleting admin users
+                )
+            )
             .returning();
 
         if (!deletedUser) return res.status(404).json({error: 'User not found'});

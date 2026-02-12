@@ -1,5 +1,5 @@
 import { pgTable, text, timestamp, pgEnum } from "drizzle-orm/pg-core";
-import { timestamps } from "./utils";
+import { timestamps } from "./utils.js";
 
 export const organizationTypeEnum = pgEnum("organization_type", ["school", "college", "university", "coaching"]);
 export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "inactive", "trial", "expired"]);

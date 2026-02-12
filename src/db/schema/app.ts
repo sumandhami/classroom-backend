@@ -9,9 +9,9 @@ import {
     index,
     primaryKey
 } from "drizzle-orm/pg-core";
-import { organization } from "./organization";
-import { user } from "./auth";
-import { timestamps } from "./utils"; // ✅ Import from utils
+import { organization } from "./organization.js";
+import { user } from "./auth.js";
+import { timestamps } from "./utils.js"; // ✅ Import from utils
 
 export const classStatusEnum = pgEnum('class_status', ['active', 'inactive', 'archived']);
 

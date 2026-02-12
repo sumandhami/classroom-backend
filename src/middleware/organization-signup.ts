@@ -87,9 +87,9 @@ export const organizationSignupMiddleware = async (
 
         // ✅ MODIFY the request body to include organizationId and role
         req.body = {
-            email: body.email,
-            password: body.password,
-            name: body.name,
+            email: validatedData.adminEmail,
+            password: validatedData.adminPassword,
+            name: validatedData.adminName,
             role: 'admin', // Set as admin
             organizationId: orgId, // Link to organization
         };
@@ -111,13 +111,11 @@ export const organizationSignupMiddleware = async (
         if (error instanceof Error && error.message.includes('violates')) {
             return res.status(400).json({
                 error: "Invalid data",
-                message: error.message,
             });
         }
 
         return res.status(500).json({
             error: "Failed to create organization",
-            message: error instanceof Error ? error.message : "Unknown error",
         });
     }
 };

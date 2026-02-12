@@ -1,13 +1,13 @@
 import { relations } from "drizzle-orm";
-import { organization } from "./organization";
-import { user, session, account } from "./auth"; // ✅ Add session, account
+import { organization } from "./organization.js";
+import { user, session, account } from "./auth.js"; // ✅ Add session, account
 import { 
     departments, 
     teacherDepartments, 
     subjects, 
     classes, 
     enrollments 
-} from "./app";
+} from "./app.js";
 
 // ✅ Organization relations
 export const organizationRelations = relations(organization, ({ many }) => ({
